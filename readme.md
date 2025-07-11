@@ -16,3 +16,8 @@ For learning and experimentation with low-level Windows game programming.
 ---
 
 Built by Khevin for self-learning purposes.
+
+## 📸 Screenshot
+
+![Demo](screenshot.png)
+

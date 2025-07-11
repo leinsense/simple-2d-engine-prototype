@@ -1,0 +1,45 @@
+
+---
+
+### ✅ `.gitignore` (khusus C++ project)
+
+```gitignore
+# Compiled Object files
+*.o
+*.obj
+
+# Compiled Binary files
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+
+# C++ backup files
+*~
+*.bak
+*.tmp
+
+# VSCode settings (optional)
+.vscode/
+
+# Build directory
+build/
+
+# Debug files
+*.log
+*.pch
+*.idb
+*.pdb
+*.sdf
+*.ipch
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Others
+*.DS_Store

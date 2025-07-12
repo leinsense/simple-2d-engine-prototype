@@ -1,74 +1,16 @@
 #include <windows.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
-int frameCount = 0;
-int currentFPS = 0;
-TCHAR fpsText[32] = TEXT("FPS: 0");
+#include "entity.h"
+#include "frame_timer.h"
+#include "input.h"
 
-int posX = 100, posY = 100;
 bool keyUp = false, keyDown = false, keyLeft = false, keyRight = false;
+bool keySpace = false, keyShoot = false;
 
-#define FPS_LOCK 60.0;
-#define FRAME_CAP (1.0 / FPS_LOCK)
-#define SPEED 200.0
-
-
-struct Timer {
-    LARGE_INTEGER freq;
-    LARGE_INTEGER last;
-    
-    void Init() {
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&last);
-    }
-    
-    double GetDelta(LARGE_INTEGER& now) {
-        double dt = (double)(now.QuadPart - last.QuadPart) / freq.QuadPart;
-        last = now;
-        return dt;
-    }
-    
-    double ToDelta(LARGE_INTEGER start, LARGE_INTEGER end) {
-        return (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
-    }
-    
-    DWORD ToMS(double sec) {
-        return (DWORD)(sec * 1000.0);
-    }
-};
-
-Timer frameTimer;
-
-struct FramePerSec {
-    LARGE_INTEGER lastCount;
-    int lastFPS = -1;
-    
-    void Init(LARGE_INTEGER now) {
-        lastCount = now;
-    }
-    
-    void Update(LARGE_INTEGER now) {
-        frameCount++;
-        double elapsed = frameTimer.ToDelta(lastCount, now);
-        if (elapsed >= 1.0) {
-            currentFPS = frameCount;
-            frameCount = 0;
-            lastCount = now;
-            if (currentFPS != lastFPS) {
-                wsprintf(fpsText, TEXT("FPS: %d"), currentFPS);
-                lastFPS = currentFPS;
-            }
-        }
-    }
-};
-
-FramePerSec FPS;
-
-inline void Update(double dt) {
-    if (keyLeft)  posX -= (int)(SPEED * dt);
-    if (keyRight) posX += (int)(SPEED * dt);
-    if (keyUp)    posY -= (int)(SPEED * dt);
-    if (keyDown)  posY += (int)(SPEED * dt);
-}
+FrameTimer frameTimer;
+FrameCounter FPS;
 
 inline void Render(HWND hwnd) {
     InvalidateRect(hwnd, NULL, TRUE);
@@ -80,17 +22,30 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
 
     case WM_KEYDOWN:
-        if (wParam == VK_LEFT) keyLeft = true;
-        if (wParam == VK_RIGHT) keyRight = true;
-        if (wParam == VK_UP) keyUp = true;
-        if (wParam == VK_DOWN) keyDown = true;
-        return 0;
+        switch(wParam){
+            case VK_LEFT:
+            case 'A': keyLeft = true; break;
 
+            case VK_RIGHT:
+            case 'D': keyRight = true; break;
+
+            case VK_SPACE: keySpace = true; break;
+            case 'Z':keyShoot = true; break;
+        }
+
+        return 0;
+        
     case WM_KEYUP:
-        if (wParam == VK_LEFT) keyLeft = false;
-        if (wParam == VK_RIGHT) keyRight = false;
-        if (wParam == VK_UP) keyUp = false;
-        if (wParam == VK_DOWN) keyDown = false;
+        switch(wParam){
+            case VK_LEFT:
+            case 'A': keyLeft = false; break;
+
+            case VK_RIGHT:
+            case 'D': keyRight = false; break;
+
+            case VK_SPACE: keySpace = false; break;
+            case 'Z':keyShoot = false; break;
+        }
         return 0;
 
     case WM_PAINT: {
@@ -98,14 +53,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         HDC hdc = BeginPaint(hwnd, &ps);
         FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 
-        HBRUSH greenBrush = CreateSolidBrush(RGB(0, 255, 0));
-        RECT rect = { posX, posY, posX + 60, posY + 60 };
-        FillRect(hdc, &rect, greenBrush);
-        DeleteObject(greenBrush);
+        RenderEntities(hdc);
+
+        // Ground
+        HPEN pen = CreatePen(PS_SOLID, 2, RGB(0,0,0));
+        SelectObject(hdc, pen);
+        MoveToEx(hdc, 0, 500, NULL);
+        LineTo(hdc, 800, 500);
+        DeleteObject(pen);
+
 
         SetTextColor(hdc, RGB(0, 0, 0));
         SetBkMode(hdc, TRANSPARENT);
-        TextOut(hdc, 10, 10, fpsText, lstrlen(fpsText));
+        TextOut(hdc, 10, 10, FPS.fpsText, lstrlen(FPS.fpsText));
 
         EndPaint(hwnd, &ps);
         return 0;
@@ -120,6 +80,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    timeBeginPeriod(1);
     const TCHAR CLASS_NAME[] = TEXT("MyWindowClass");
     WNDCLASS wc = {};
 
@@ -141,6 +102,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
+    AddEntity(ENTITY_PLAYER, 100, 100, RGB(0, 255, 0)); // player
+    AddEntity(ENTITY_ENEMY, 300, 300, RGB(255, 0, 0));  // enemy
+
+
     MSG msg = {};
     frameTimer.Init();
     FPS.Init(frameTimer.last);
@@ -157,18 +122,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         double deltaTime = frameTimer.GetDelta(frameStart);
 
-        FPS.Update(frameStart);
-        Update(deltaTime);
+        FPS.Update(frameStart, frameTimer);
+        UpdateEntities(deltaTime);
         Render(hwnd);
 
         QueryPerformanceCounter(&frameEnd);
         double elapsed = frameTimer.ToDelta(frameStart, frameEnd);
         double sleepTime = FRAME_CAP - elapsed;
+
         if (sleepTime > 0) {
             DWORD ms = frameTimer.ToMS(sleepTime);
-            if (ms > 0) Sleep(ms);
+            if (ms >= 2)
+                Sleep(ms - 1);
+
+            do {
+                QueryPerformanceCounter(&frameEnd);
+                elapsed = frameTimer.ToDelta(frameStart, frameEnd);
+            } while (elapsed < FRAME_CAP);
         }
     }
 
+    timeEndPeriod(1);
     return 0;
 }

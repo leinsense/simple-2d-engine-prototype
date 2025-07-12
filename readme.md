@@ -1,28 +1,27 @@
-# Simple 2D Engine Prototype (WinAPI + GDI)
+# Simple 2D Game Engine Prototype ( WinAPI )
+A lightweight 2D game engine prototype built using C++, WinAPI, and GDI — made to explore manual game loops, delta time, frame limiting, basic entity management, and native sound playback.
+Fully written from scratch without external libraries or frameworks.
 
-A lightweight 2D engine prototype built entirely with raw C++, WinAPI, and GDI — designed as a learning tool to deeply understand low-level concepts like manual game loops, high-precision time management, basic entity simulation, and native audio playback.
+### Features
+- Manual game loop (PeekMessage)
+- High-precision delta time (QueryPerformanceCounter)
+- Frame limiter (locked at 90 FPS)
+- Real-time FPS counter
+- Basic entity system (player, enemy, bullet)
+- Simple gravity and jumping
+- Collision detection
+- Sound playback with .wav files (PlaySound)
+- Rendering with WinAPI GDI (FillRect, TextOut)
 
-Built from scratch without any frameworks or external libraries to explore what truly happens under the hood in a real-time game engine.a manual game loop.
-
-### 🔧 Features
-- 🎮 Manual game loop using `PeekMessage` + `QueryPerformanceCounter`
-- ⏱️ High-precision delta time and frame limiter (lock to 90 FPS)
-- 📊 Real-time FPS counter drawn with `TextOut`
-- 🧍 Basic entity system with types: Player, Enemy, Bullet
-- 🧠 Simple physics: gravity, jumping, horizontal movement
-- 💥 Collision detection between bullets and enemies
-- 🔊 Sound effects for jump, shoot, and explosion using `.wav` + `PlaySound()`
-- 🖱️ Keyboard input handling (Arrow keys / A, D, Space, Z)
-- 🎨 Rendering via GDI (`FillRect`, `CreatePen`, `TextOut`)
-
-### Purpose:
+### Purpose
 Designed for learning and experimentation with low-level game programming in the Windows environment — without any external libraries
-
----
-
-Built by Khevin for self-learning purposes.
 
 ### Screenshot
 
-![Demo](screenshot.png)
-
+![File Image](screenshot.png)
+### Build Instructions
+Use MinGW-w64 or any C++ compiler for Windows
+#### Example:
+```
+g++ src/*.cpp -o run.exe -lgdi32 -mwindows -lwinmm
+```
